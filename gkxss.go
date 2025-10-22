@@ -176,7 +176,13 @@ func checkCharacterFilters(c paramCheck, output chan paramCheck) {
 			defer wg.Done()
 			// Use unique prefix/suffix to avoid false positives
 			wasReflected, err := checkAppendReflection(c.url, c.param, "xPrE"+ch+"xSuF")
-			if err == nil && wasReflected {
+			if err != nil {
+				if verbose {
+					fmt.Fprintf(os.Stderr, "[!] Error testing char '%s' for %s: %s\n", ch, c.param, err)
+				}
+				return
+			}
+			if wasReflected {
 				results <- charResult{ch, true}
 			}
 		}(char)
@@ -195,6 +201,10 @@ func checkCharacterFilters(c paramCheck, output chan paramCheck) {
 		}
 	}
 
+	if verbose && len(unfilteredChars) > 0 {
+		fmt.Printf("[*] Found %d unfiltered chars for param '%s'\n", len(unfilteredChars), c.param)
+	}
+
 	c.chars = unfilteredChars
 	output <- c
 }
@@ -207,10 +217,14 @@ func analyzeAndReport(c paramCheck, output chan paramCheck) {
 		return
 	}
 
-	// Build context list
+	// Build deduplicated context list
+	contextMap := make(map[string]bool)
 	contextTypes := []string{}
 	for _, ctx := range contexts {
-		contextTypes = append(contextTypes, ctx.contextType)
+		if !contextMap[ctx.contextType] {
+			contextMap[ctx.contextType] = true
+			contextTypes = append(contextTypes, ctx.contextType)
+		}
 	}
 
 	// Print results
@@ -221,12 +235,18 @@ func analyzeAndReport(c paramCheck, output chan paramCheck) {
 
 	if len(c.chars) > 0 {
 		fmt.Printf("    Unfiltered Chars: %v\n", c.chars)
+	} else {
+		fmt.Printf("    Unfiltered Chars: (testing failed or all filtered)\n")
 	}
 
 	if verbose {
 		fmt.Println("    Context Details:")
+		displayed := make(map[string]bool)
 		for _, ctx := range contexts {
-			fmt.Printf("      - %s: %s\n", ctx.contextType, ctx.snippet)
+			if !displayed[ctx.contextType] {
+				displayed[ctx.contextType] = true
+				fmt.Printf("      - %s: %s\n", ctx.contextType, ctx.snippet)
+			}
 		}
 	}
 
