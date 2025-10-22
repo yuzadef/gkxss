@@ -157,6 +157,16 @@ func checkInitialReflection(c paramCheck, output chan paramCheck) {
 }
 
 func checkCharacterFilters(c paramCheck, output chan paramCheck) {
+	// First verify the parameter still reflects with a simple append
+	testReflected, err := checkAppendReflection(c.url, c.param, "XtEsTx")
+	if err != nil || !testReflected {
+		if verbose {
+			fmt.Fprintf(os.Stderr, "[!] Param '%s' doesn't reflect when modified, skipping char tests\n", c.param)
+		}
+		output <- c
+		return
+	}
+
 	// Test special characters with unique markers
 	testChars := []string{"\"", "'", "<", ">", "$", "|", "(", ")", "`", ":", ";", "{", "}", "/", "\\"}
 	unfilteredChars := []string{}
@@ -201,8 +211,12 @@ func checkCharacterFilters(c paramCheck, output chan paramCheck) {
 		}
 	}
 
-	if verbose && len(unfilteredChars) > 0 {
-		fmt.Printf("[*] Found %d unfiltered chars for param '%s'\n", len(unfilteredChars), c.param)
+	if verbose {
+		if len(unfilteredChars) > 0 {
+			fmt.Printf("[*] Found %d unfiltered chars for param '%s': %v\n", len(unfilteredChars), c.param, unfilteredChars)
+		} else {
+			fmt.Printf("[*] No unfiltered chars found for param '%s'\n", c.param)
+		}
 	}
 
 	c.chars = unfilteredChars
