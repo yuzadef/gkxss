@@ -169,14 +169,10 @@ func checkCharacterFilters(c paramCheck, output chan paramCheck) {
 
 	// Test special characters with unique markers
 	testChars := []string{"\"", "'", "<", ">", "$", "|", "(", ")", "`", ":", ";", "{", "}", "/", "\\"}
+	
+	// Use a mutex to safely collect results
+	var mu sync.Mutex
 	unfilteredChars := []string{}
-
-	// Use a channel to collect results
-	type charResult struct {
-		char      string
-		reflected bool
-	}
-	results := make(chan charResult, len(testChars))
 
 	// Test characters concurrently
 	var wg sync.WaitGroup
@@ -193,23 +189,15 @@ func checkCharacterFilters(c paramCheck, output chan paramCheck) {
 				return
 			}
 			if wasReflected {
-				results <- charResult{ch, true}
+				mu.Lock()
+				unfilteredChars = append(unfilteredChars, ch)
+				mu.Unlock()
 			}
 		}(char)
 	}
 
-	// Close results channel when all goroutines complete
-	go func() {
-		wg.Wait()
-		close(results)
-	}()
-
-	// Collect results
-	for result := range results {
-		if result.reflected {
-			unfilteredChars = append(unfilteredChars, result.char)
-		}
-	}
+	// Wait for all character tests to complete
+	wg.Wait()
 
 	if verbose {
 		if len(unfilteredChars) > 0 {
