@@ -314,18 +314,47 @@ func checkAppendReflection(targetURL, param, suffix string) (bool, error) {
 	qs.Set(param, val+suffix)
 	u.RawQuery = qs.Encode()
 
-	reflected, err := getReflectedParams(u.String())
+	req, err := http.NewRequest("GET", u.String(), nil)
 	if err != nil {
 		return false, err
 	}
 
-	for _, r := range reflected {
-		if r == param {
-			return true, nil
+	req.Header.Add("User-Agent", useragent)
+	for _, v := range custhead {
+		parts := strings.SplitN(v, ":", 2)
+		if len(parts) == 2 {
+			req.Header.Add(strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1]))
 		}
 	}
 
-	return false, nil
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return false, err
+	}
+	if resp.Body == nil {
+		return false, fmt.Errorf("empty response body")
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return false, err
+	}
+
+	// Skip redirects and non-HTML
+	if strings.HasPrefix(resp.Status, "3") {
+		return false, nil
+	}
+
+	ct := resp.Header.Get("Content-Type")
+	if ct != "" && !strings.Contains(ct, "html") {
+		return false, nil
+	}
+
+	bodyStr := string(body)
+
+	// Check if the suffix is actually reflected in the body
+	return strings.Contains(bodyStr, suffix), nil
 }
 
 func detectReflectionContext(targetURL, param, testPayload string) []reflectionContext {
