@@ -44,7 +44,7 @@ Each stage runs with its own worker pool (default 40 goroutines each).
 Requires Go 1.18+.
 
 ```bash
-go build -o boom boom.go
+go build -o gkxss gkxss.go
 ```
 
 ---
@@ -52,7 +52,7 @@ go build -o boom boom.go
 ## Usage
 
 ```
-cat urls.txt | ./boom [flags]
+cat urls.txt | ./gkxss [flags]
 ```
 
 URLs are read one per line from **stdin**. Each URL should include query
@@ -75,17 +75,17 @@ parameters whose values you want to test for reflection.
 
 Basic scan:
 ```bash
-cat urls.txt | ./boom
+cat urls.txt | ./gkxss
 ```
 
 Verbose output with proxy and custom header:
 ```bash
-cat urls.txt | ./boom -v -x http://127.0.0.1:8080 -h "Cookie: session=abc123"
+cat urls.txt | ./gkxss -v -x http://127.0.0.1:8080 -h "Cookie: session=abc123"
 ```
 
 Save findings to a file with custom payload:
 ```bash
-cat urls.txt | ./boom -p myuniqtoken -o results.txt
+cat urls.txt | ./gkxss -p myuniqtoken -o results.txt
 ```
 
 ---
